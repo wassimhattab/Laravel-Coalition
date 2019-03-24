@@ -19,7 +19,9 @@
                 height: 100vh;
                 margin: 0;
             }
-
+			input.error{
+				border:1px solid red;
+			}
             .full-height {
                 height: 100vh;
             }
@@ -61,39 +63,128 @@
             .m-b-md {
                 margin-bottom: 30px;
             }
+			
+			table tbody *,table tfoot *{
+				text-align: center;
+			}
         </style>
     </head>
     <body>
-        <div class="flex-center position-ref full-height">
-            @if (Route::has('login'))
-                <div class="top-right links">
-                    @auth
-                        <a href="{{ url('/home') }}">Home</a>
-                    @else
-                        <a href="{{ route('login') }}">Login</a>
-
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}">Register</a>
-                        @endif
-                    @endauth
-                </div>
-            @endif
-
-            <div class="content">
-                <div class="title m-b-md">
-                    Laravel
-                </div>
-
-                <div class="links">
-                    <a href="https://laravel.com/docs">Docs</a>
-                    <a href="https://laracasts.com">Laracasts</a>
-                    <a href="https://laravel-news.com">News</a>
-                    <a href="https://blog.laravel.com">Blog</a>
-                    <a href="https://nova.laravel.com">Nova</a>
-                    <a href="https://forge.laravel.com">Forge</a>
-                    <a href="https://github.com/laravel/laravel">GitHub</a>
-                </div>
-            </div>
-        </div>
+			<div class="container">
+        {{Form::open(array('id'=>'add_product'))}}
+					<h1>Add Product </h1>
+					<div class="form-group name">
+						{{Form::label('Product Name')}}
+						{{Form::text('name',null,array('id'=>'name'))}}
+					</div>
+					<div class="form-group quantity">
+						{{Form::label('Product Quantity')}}
+						{{Form::text('quantity',null,array('id'=>'quantity'))}}
+					</div>
+					<div class="form-group price">
+						{{Form::label('Product Price')}}
+						{{Form::text('price',null,array('id'=>'price'))}}
+					</div>
+					{{Form::submit('Add!')}}
+				{{Form::close()}}
+			</div>
+			<table width="100%" id="products_table">
+				<thead>
+					<th>Product Name</th>
+					<th>Product Quantity</th>
+					<th>Product Price</th>
+					<th>Product Created Time</th>
+					<th>Total</th>
+				</thead>
+				<tbody>
+					
+				</tbody>
+				<tfoot>
+					<th>Summary</th>
+					<th></th>
+					<th></th>
+					<th></th>
+					<th id="total_amount"></th>
+				</tfoot>
+			</table>
     </body>
+	
+	<script>
+		var add_product_form=document.getElementById('add_product');
+		add_product_form.addEventListener('submit',function(e){
+			
+			var inputs = add_product_form.getElementsByTagName('input');
+			for(var i=0;i<inputs.length;i++){
+				inputs[i].classList.remove('error');
+			}
+			e.preventDefault();
+			var request=new XMLHttpRequest();
+			request.responseType = 'json';
+			var formData = new FormData(add_product_form);
+
+
+			request.open('post',"{{url('/add_product')}}");
+			request.send(formData); 
+			request.onload = function() {
+
+				if(request.response.result == 0){
+					for(k in request.response.message){
+						document.getElementById(request.response.message[k].name).classList.add('error');
+					}
+				}else{
+					load_table()
+				}
+			}
+
+		})
+		
+		function load_table(){
+			document.getElementById('products_table').getElementsByTagName('tbody')[0].textContent = '';
+			var formData = new FormData();
+			formData.append("_token", "{{csrf_token()}}");
+			var request=new XMLHttpRequest();
+			request.responseType = 'json';
+			
+
+			request.open('post',"{{url('/products/fetch')}}");
+			request.send(formData); 
+			request.onload = function() {
+				var table = document.getElementById('products_table').getElementsByTagName('tbody')[0];
+				var data = request.response;
+				
+				var total = 0;
+				for(var i=0;i<data.length;i++){
+					console.log(data[i].name)
+					var newRow = document.createElement('tr');
+					
+					var name_column = document.createElement('td');
+					name_column.textContent = data[i].name;
+					newRow.appendChild(name_column); 
+					
+					var quantity_column = document.createElement('td');
+					quantity_column.textContent = data[i].quantity;
+					newRow.appendChild(quantity_column); 
+					
+					var price_column = document.createElement('td');
+					price_column.textContent = data[i].price;
+					newRow.appendChild(price_column); 
+					
+					var created_column = document.createElement('td');
+					created_column.textContent = data[i].created_at;
+					newRow.appendChild(created_column); 
+					
+					var total_column = document.createElement('td');
+					total_column.textContent = data[i].quantity*data[i].price;
+					newRow.appendChild(total_column); 
+					
+					total += data[i].quantity*data[i].price;
+					table.appendChild(newRow)
+				}
+				
+				document.getElementById('total_amount').textContent = total;
+			}
+		}
+		
+		load_table()
+	</script>
 </html>
